@@ -14,33 +14,33 @@ import (
 
 // ListVideosInput defines the parameters for the list_videos tool.
 type ListVideosInput struct {
-	Location string `json:"location,omitempty" jsonschema:"description=Filter by location: new later shortlist archive feed"`
-	Limit    int    `json:"limit,omitempty" jsonschema:"description=Max results (1-100 default 50)"`
+	Location string `json:"location,omitempty" jsonschema:"Filter by location: new later shortlist archive feed"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"Max results (1-100 default 50)"`
 }
 
 // GetVideoInput defines the parameters for the get_video tool.
 type GetVideoInput struct {
-	ID string `json:"id" jsonschema:"required,description=Video document ID"`
+	ID string `json:"id" jsonschema:"Video document ID"`
 }
 
 // GetVideoPositionInput defines the parameters for the get_video_position tool.
 type GetVideoPositionInput struct {
-	ID string `json:"id" jsonschema:"required,description=Video document ID"`
+	ID string `json:"id" jsonschema:"Video document ID"`
 }
 
 // UpdateVideoPositionInput defines the parameters for the update_video_position tool.
 type UpdateVideoPositionInput struct {
-	ID       string   `json:"id" jsonschema:"required,description=Video document ID"`
-	Position *float64 `json:"position" jsonschema:"required,description=Reading progress (0.0 to 1.0)"`
+	ID       string   `json:"id" jsonschema:"Video document ID"`
+	Position *float64 `json:"position" jsonschema:"Reading progress (0.0 to 1.0)"`
 }
 
 // CreateVideoHighlightInput defines the parameters for the create_video_highlight tool.
 type CreateVideoHighlightInput struct {
-	ID           string   `json:"id" jsonschema:"required,description=Video document ID"`
-	Text         string   `json:"text" jsonschema:"required,description=Highlight text (max 8191 chars)"`
-	Timestamp    *float64 `json:"timestamp" jsonschema:"required,description=Timestamp in seconds"`
-	EndTimestamp *float64 `json:"end_timestamp,omitempty" jsonschema:"description=End timestamp in seconds"`
-	Note         string   `json:"note,omitempty" jsonschema:"description=Note attached to the highlight"`
+	ID           string   `json:"id" jsonschema:"Video document ID"`
+	Text         string   `json:"text" jsonschema:"Highlight text (max 8191 chars)"`
+	Timestamp    *float64 `json:"timestamp" jsonschema:"Timestamp in seconds"`
+	EndTimestamp *float64 `json:"end_timestamp,omitempty" jsonschema:"End timestamp in seconds"`
+	Note         string   `json:"note,omitempty" jsonschema:"Note attached to the highlight"`
 }
 
 // RegisterVideoTools registers the 5 video profile tools with the MCP server.

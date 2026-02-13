@@ -15,9 +15,9 @@ import (
 
 // SearchHighlightsInput defines the parameters for the search_highlights tool.
 type SearchHighlightsInput struct {
-	Query    string `json:"query" jsonschema:"required,description=Search query to match against highlight text and notes and source titles"`
-	SourceID string `json:"source_id,omitempty" jsonschema:"description=Filter results to a specific source ID"`
-	Limit    int    `json:"limit,omitempty" jsonschema:"description=Maximum number of results (1-200),default=50"`
+	Query    string `json:"query" jsonschema:"Search query to match against highlight text and notes and source titles"`
+	SourceID string `json:"source_id,omitempty" jsonschema:"Filter results to a specific source ID"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"Maximum number of results (1-200; default 50)"`
 }
 
 // SearchHighlightResult represents a single search result.
@@ -29,10 +29,10 @@ type SearchHighlightResult struct {
 
 // SearchDocumentsInput defines the parameters for the search_documents tool.
 type SearchDocumentsInput struct {
-	Query    string `json:"query" jsonschema:"required,description=Search query to match against document title and author and summary and notes"`
-	Location string `json:"location,omitempty" jsonschema:"description=Filter by location: new later shortlist archive feed"`
-	Category string `json:"category,omitempty" jsonschema:"description=Filter by category: article email rss highlight note pdf epub tweet video"`
-	Limit    int    `json:"limit,omitempty" jsonschema:"description=Maximum number of results (1-200),default=50"`
+	Query    string `json:"query" jsonschema:"Search query to match against document title and author and summary and notes"`
+	Location string `json:"location,omitempty" jsonschema:"Filter by location: new later shortlist archive feed"`
+	Category string `json:"category,omitempty" jsonschema:"Filter by category: article email rss highlight note pdf epub tweet video"`
+	Limit    int    `json:"limit,omitempty" jsonschema:"Maximum number of results (1-200; default 50)"`
 }
 
 // SearchDocumentResult represents a single document search result.

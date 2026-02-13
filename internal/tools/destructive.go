@@ -12,24 +12,24 @@ import (
 
 // DeleteHighlightInput defines the parameters for the delete_highlight tool.
 type DeleteHighlightInput struct {
-	ID string `json:"id" jsonschema:"required,description=Highlight ID to delete"`
+	ID string `json:"id" jsonschema:"Highlight ID to delete"`
 }
 
 // DeleteHighlightTagInput defines the parameters for the delete_highlight_tag tool.
 type DeleteHighlightTagInput struct {
-	HighlightID string `json:"highlight_id" jsonschema:"required,description=Highlight ID"`
-	TagID       string `json:"tag_id" jsonschema:"required,description=Tag ID to remove"`
+	HighlightID string `json:"highlight_id" jsonschema:"Highlight ID"`
+	TagID       string `json:"tag_id" jsonschema:"Tag ID to remove"`
 }
 
 // DeleteSourceTagInput defines the parameters for the delete_source_tag tool.
 type DeleteSourceTagInput struct {
-	SourceID string `json:"source_id" jsonschema:"required,description=Source ID"`
-	TagID    string `json:"tag_id" jsonschema:"required,description=Tag ID to remove"`
+	SourceID string `json:"source_id" jsonschema:"Source ID"`
+	TagID    string `json:"tag_id" jsonschema:"Tag ID to remove"`
 }
 
 // DeleteDocumentInput defines the parameters for the delete_document tool.
 type DeleteDocumentInput struct {
-	ID string `json:"id" jsonschema:"required,description=Document ID to delete"`
+	ID string `json:"id" jsonschema:"Document ID to delete"`
 }
 
 const deletedResponse = `{"deleted":true}`
