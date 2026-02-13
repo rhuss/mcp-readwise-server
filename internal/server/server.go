@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/rhuss/readwise-mcp-server/internal/api"
+	"github.com/rhuss/readwise-mcp-server/internal/tools"
 	"github.com/rhuss/readwise-mcp-server/internal/types"
 )
 
@@ -37,6 +39,10 @@ func New(cfg types.Config, logger *slog.Logger) *Server {
 		Config:    cfg,
 		Logger:    logger,
 	}
+
+	// Register tools based on active profiles
+	apiClient := api.NewClient()
+	tools.RegisterAllTools(mcpServer, apiClient, cfg.Profiles)
 
 	s.handler = mcp.NewStreamableHTTPHandler(
 		func(r *http.Request) *mcp.Server {
