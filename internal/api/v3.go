@@ -109,3 +109,37 @@ func (c *Client) ListReaderTags(ctx context.Context, apiKey string) ([]types.Tag
 	}
 	return result, nil
 }
+
+// SaveDocument saves a URL to Reader.
+func (c *Client) SaveDocument(ctx context.Context, apiKey string, req types.SaveDocumentRequest) (*types.SaveDocumentResponse, error) {
+	body, err := c.PostV3(ctx, "/save/", apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result types.SaveDocumentResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, NewInternalError(fmt.Sprintf("failed to parse save document response: %v", err))
+	}
+	return &result, nil
+}
+
+// UpdateDocument updates document metadata in Reader.
+func (c *Client) UpdateDocument(ctx context.Context, apiKey string, id string, req types.UpdateDocumentRequest) (*types.Document, error) {
+	body, err := c.PatchV3(ctx, fmt.Sprintf("/update/%s/", id), apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result types.Document
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, NewInternalError(fmt.Sprintf("failed to parse update document response: %v", err))
+	}
+	return &result, nil
+}
+
+// DeleteDocument deletes a Reader document.
+func (c *Client) DeleteDocument(ctx context.Context, apiKey string, id string) error {
+	_, err := c.DeleteV3(ctx, fmt.Sprintf("/delete/%s/", id), apiKey)
+	return err
+}

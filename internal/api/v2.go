@@ -190,3 +190,77 @@ func (c *Client) ListHighlightTags(ctx context.Context, apiKey string, highlight
 	}
 	return result, nil
 }
+
+// CreateHighlight creates one or more highlights via the Readwise v2 API.
+func (c *Client) CreateHighlight(ctx context.Context, apiKey string, req types.CreateHighlightsRequest) ([]types.Highlight, error) {
+	body, err := c.PostV2(ctx, "/highlights/", apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []types.Highlight
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, NewInternalError(fmt.Sprintf("failed to parse create highlight response: %v", err))
+	}
+	return result, nil
+}
+
+// UpdateHighlight updates an existing highlight via PATCH.
+func (c *Client) UpdateHighlight(ctx context.Context, apiKey string, id string, req types.UpdateHighlightRequest) (*types.Highlight, error) {
+	body, err := c.PatchV2(ctx, fmt.Sprintf("/highlights/%s/", id), apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result types.Highlight
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, NewInternalError(fmt.Sprintf("failed to parse update highlight response: %v", err))
+	}
+	return &result, nil
+}
+
+// AddBookTag adds a tag to a book (source).
+func (c *Client) AddBookTag(ctx context.Context, apiKey string, bookID string, req types.CreateTagRequest) (*types.Tag, error) {
+	body, err := c.PostV2(ctx, fmt.Sprintf("/books/%s/tags/", bookID), apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result types.Tag
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, NewInternalError(fmt.Sprintf("failed to parse add tag response: %v", err))
+	}
+	return &result, nil
+}
+
+// AddHighlightTag adds a tag to a highlight.
+func (c *Client) AddHighlightTag(ctx context.Context, apiKey string, highlightID string, req types.CreateTagRequest) (*types.Tag, error) {
+	body, err := c.PostV2(ctx, fmt.Sprintf("/highlights/%s/tags/", highlightID), apiKey, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result types.Tag
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, NewInternalError(fmt.Sprintf("failed to parse add tag response: %v", err))
+	}
+	return &result, nil
+}
+
+// DeleteHighlight deletes a highlight.
+func (c *Client) DeleteHighlight(ctx context.Context, apiKey string, id string) error {
+	_, err := c.DeleteV2(ctx, fmt.Sprintf("/highlights/%s/", id), apiKey)
+	return err
+}
+
+// DeleteBookTag removes a tag from a book.
+func (c *Client) DeleteBookTag(ctx context.Context, apiKey string, bookID, tagID string) error {
+	_, err := c.DeleteV2(ctx, fmt.Sprintf("/books/%s/tags/%s", bookID, tagID), apiKey)
+	return err
+}
+
+// DeleteHighlightTag removes a tag from a highlight.
+func (c *Client) DeleteHighlightTag(ctx context.Context, apiKey string, highlightID, tagID string) error {
+	_, err := c.DeleteV2(ctx, fmt.Sprintf("/highlights/%s/tags/%s", highlightID, tagID), apiKey)
+	return err
+}
