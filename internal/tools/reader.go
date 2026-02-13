@@ -12,16 +12,16 @@ import (
 
 // ListDocumentsInput defines the parameters for the list_documents tool.
 type ListDocumentsInput struct {
-	Location     string `json:"location,omitempty" jsonschema:"description=Filter by location: new later shortlist archive feed"`
-	Category     string `json:"category,omitempty" jsonschema:"description=Filter by category: article email rss highlight note pdf epub tweet video"`
-	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"description=ISO 8601 datetime to filter documents updated after"`
-	Limit        int    `json:"limit,omitempty" jsonschema:"description=Maximum number of results (1-100),default=100"`
+	Location     string `json:"location,omitempty" jsonschema:"Filter by location: new later shortlist archive feed"`
+	Category     string `json:"category,omitempty" jsonschema:"Filter by category: article email rss highlight note pdf epub tweet video"`
+	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"ISO 8601 datetime to filter documents updated after"`
+	Limit        int    `json:"limit,omitempty" jsonschema:"Maximum number of results (1-100; default 100)"`
 }
 
 // GetDocumentInput defines the parameters for the get_document tool.
 type GetDocumentInput struct {
-	ID             string `json:"id" jsonschema:"required,description=Document ID"`
-	IncludeContent bool   `json:"include_content,omitempty" jsonschema:"description=Include full document content,default=false"`
+	ID             string `json:"id" jsonschema:"Document ID"`
+	IncludeContent bool   `json:"include_content,omitempty" jsonschema:"Include full document content (default false)"`
 }
 
 // ListReaderTagsInput is empty since no parameters are needed.

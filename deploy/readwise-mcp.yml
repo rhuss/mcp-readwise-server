@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: readwise-mcp
+  labels:
+    app: readwise-mcp
+spec:
+  replicas: 1
+  serviceName: readwise-mcp
+  selector:
+    matchLabels:
+      app: readwise-mcp
+  template:
+    metadata:
+      labels:
+        app: readwise-mcp
+    spec:
+      containers:
+        - name: readwise-mcp
+          image: readwise-mcp-server:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: READWISE_PROFILES
+              value: "basic"
+            - name: PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: CACHE_MAX_SIZE_MB
+              value: "128"
+            - name: CACHE_TTL_SECONDS
+              value: "300"
+            - name: CACHE_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+        - name: nginx
+          image: docker.io/library/nginx:1.25-alpine
+          ports:
+            - containerPort: 8443
+              name: https
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: readwise-mcp-nginx
+        - name: tls
+          secret:
+            secretName: readwise-mcp-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: readwise-mcp
+  labels:
+    app: readwise-mcp
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8443
+      targetPort: https
+      name: https
+    - port: 8080
+      targetPort: http
+      name: http
+  selector:
+    app: readwise-mcp

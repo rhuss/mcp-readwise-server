@@ -12,43 +12,43 @@ import (
 
 // ListSourcesInput defines the parameters for the list_sources tool.
 type ListSourcesInput struct {
-	PageSize     int    `json:"page_size,omitempty" jsonschema:"description=Number of results per page (1-1000),default=100"`
-	Page         int    `json:"page,omitempty" jsonschema:"description=Page number (1-based),default=1"`
-	Category     string `json:"category,omitempty" jsonschema:"description=Filter by category: books articles tweets supplementals podcasts"`
-	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"description=ISO 8601 datetime to filter sources updated after"`
+	PageSize     int    `json:"page_size,omitempty" jsonschema:"Number of results per page (1-1000; default 100)"`
+	Page         int    `json:"page,omitempty" jsonschema:"Page number (1-based; default 1)"`
+	Category     string `json:"category,omitempty" jsonschema:"Filter by category: books articles tweets supplementals podcasts"`
+	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"ISO 8601 datetime to filter sources updated after"`
 }
 
 // GetSourceInput defines the parameters for the get_source tool.
 type GetSourceInput struct {
-	ID string `json:"id" jsonschema:"required,description=Source ID"`
+	ID string `json:"id" jsonschema:"Source ID"`
 }
 
 // ListHighlightsInput defines the parameters for the list_highlights tool.
 type ListHighlightsInput struct {
-	PageSize     int    `json:"page_size,omitempty" jsonschema:"description=Number of results per page (1-1000),default=100"`
-	Page         int    `json:"page,omitempty" jsonschema:"description=Page number (1-based),default=1"`
-	SourceID     string `json:"source_id,omitempty" jsonschema:"description=Filter highlights by source ID"`
-	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"description=ISO 8601 datetime to filter highlights updated after"`
+	PageSize     int    `json:"page_size,omitempty" jsonschema:"Number of results per page (1-1000; default 100)"`
+	Page         int    `json:"page,omitempty" jsonschema:"Page number (1-based; default 1)"`
+	SourceID     string `json:"source_id,omitempty" jsonschema:"Filter highlights by source ID"`
+	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"ISO 8601 datetime to filter highlights updated after"`
 }
 
 // GetHighlightInput defines the parameters for the get_highlight tool.
 type GetHighlightInput struct {
-	ID string `json:"id" jsonschema:"required,description=Highlight ID"`
+	ID string `json:"id" jsonschema:"Highlight ID"`
 }
 
 // ExportHighlightsInput defines the parameters for the export_highlights tool.
 type ExportHighlightsInput struct {
-	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"description=ISO 8601 datetime to filter exports updated after"`
+	UpdatedAfter string `json:"updated_after,omitempty" jsonschema:"ISO 8601 datetime to filter exports updated after"`
 }
 
 // ListSourceTagsInput defines the parameters for the list_source_tags tool.
 type ListSourceTagsInput struct {
-	SourceID string `json:"source_id" jsonschema:"required,description=Source ID to list tags for"`
+	SourceID string `json:"source_id" jsonschema:"Source ID to list tags for"`
 }
 
 // ListHighlightTagsInput defines the parameters for the list_highlight_tags tool.
 type ListHighlightTagsInput struct {
-	HighlightID string `json:"highlight_id" jsonschema:"required,description=Highlight ID to list tags for"`
+	HighlightID string `json:"highlight_id" jsonschema:"Highlight ID to list tags for"`
 }
 
 // RegisterReadwiseTools registers the 9 readwise profile tools with the MCP server.

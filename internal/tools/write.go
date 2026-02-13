@@ -14,74 +14,74 @@ import (
 
 // SaveDocumentInput defines the parameters for the save_document tool.
 type SaveDocumentInput struct {
-	URL      string   `json:"url" jsonschema:"required,description=URL to save to Reader"`
-	Title    string   `json:"title,omitempty" jsonschema:"description=Optional title override"`
-	Author   string   `json:"author,omitempty" jsonschema:"description=Optional author"`
-	Summary  string   `json:"summary,omitempty" jsonschema:"description=Optional summary"`
-	Tags     []string `json:"tags,omitempty" jsonschema:"description=Tags to apply"`
-	Location string   `json:"location,omitempty" jsonschema:"description=Location: new later shortlist archive"`
-	Category string   `json:"category,omitempty" jsonschema:"description=Category override"`
+	URL      string   `json:"url" jsonschema:"URL to save to Reader"`
+	Title    string   `json:"title,omitempty" jsonschema:"Optional title override"`
+	Author   string   `json:"author,omitempty" jsonschema:"Optional author"`
+	Summary  string   `json:"summary,omitempty" jsonschema:"Optional summary"`
+	Tags     []string `json:"tags,omitempty" jsonschema:"Tags to apply"`
+	Location string   `json:"location,omitempty" jsonschema:"Location: new later shortlist archive"`
+	Category string   `json:"category,omitempty" jsonschema:"Category override"`
 }
 
 // UpdateDocumentInput defines the parameters for the update_document tool.
 type UpdateDocumentInput struct {
-	ID       string   `json:"id" jsonschema:"required,description=Document ID to update"`
-	Title    string   `json:"title,omitempty" jsonschema:"description=New title"`
-	Author   string   `json:"author,omitempty" jsonschema:"description=New author"`
-	Summary  string   `json:"summary,omitempty" jsonschema:"description=New summary"`
-	Location string   `json:"location,omitempty" jsonschema:"description=New location: new later shortlist archive"`
-	Tags     []string `json:"tags,omitempty" jsonschema:"description=New tags"`
-	Seen     *bool    `json:"seen,omitempty" jsonschema:"description=Mark as seen"`
+	ID       string   `json:"id" jsonschema:"Document ID to update"`
+	Title    string   `json:"title,omitempty" jsonschema:"New title"`
+	Author   string   `json:"author,omitempty" jsonschema:"New author"`
+	Summary  string   `json:"summary,omitempty" jsonschema:"New summary"`
+	Location string   `json:"location,omitempty" jsonschema:"New location: new later shortlist archive"`
+	Tags     []string `json:"tags,omitempty" jsonschema:"New tags"`
+	Seen     *bool    `json:"seen,omitempty" jsonschema:"Mark as seen"`
 }
 
 // CreateHighlightInput defines the parameters for the create_highlight tool.
 type CreateHighlightInput struct {
-	Text          string `json:"text" jsonschema:"required,description=Highlight text (max 8191 chars)"`
-	SourceID      string `json:"source_id,omitempty" jsonschema:"description=Source ID to attach highlight to"`
-	SourceTitle   string `json:"source_title,omitempty" jsonschema:"description=Source title (required if source_id not set)"`
-	SourceAuthor  string `json:"source_author,omitempty" jsonschema:"description=Source author"`
-	SourceURL     string `json:"source_url,omitempty" jsonschema:"description=Source URL"`
-	Note          string `json:"note,omitempty" jsonschema:"description=Note attached to the highlight"`
-	Location      int    `json:"location,omitempty" jsonschema:"description=Position in source"`
-	LocationType  string `json:"location_type,omitempty" jsonschema:"description=Location type: page order time_offset"`
-	HighlightedAt string `json:"highlighted_at,omitempty" jsonschema:"description=ISO 8601 datetime when highlighted"`
+	Text          string `json:"text" jsonschema:"Highlight text (max 8191 chars)"`
+	SourceID      string `json:"source_id,omitempty" jsonschema:"Source ID to attach highlight to"`
+	SourceTitle   string `json:"source_title,omitempty" jsonschema:"Source title (required if source_id not set)"`
+	SourceAuthor  string `json:"source_author,omitempty" jsonschema:"Source author"`
+	SourceURL     string `json:"source_url,omitempty" jsonschema:"Source URL"`
+	Note          string `json:"note,omitempty" jsonschema:"Note attached to the highlight"`
+	Location      int    `json:"location,omitempty" jsonschema:"Position in source"`
+	LocationType  string `json:"location_type,omitempty" jsonschema:"Location type: page order time_offset"`
+	HighlightedAt string `json:"highlighted_at,omitempty" jsonschema:"ISO 8601 datetime when highlighted"`
 }
 
 // UpdateHighlightInput defines the parameters for the update_highlight tool.
 type UpdateHighlightInput struct {
-	ID       string `json:"id" jsonschema:"required,description=Highlight ID to update"`
-	Text     string `json:"text,omitempty" jsonschema:"description=New highlight text (max 8191 chars)"`
-	Note     string `json:"note,omitempty" jsonschema:"description=New note"`
-	Location int    `json:"location,omitempty" jsonschema:"description=New position in source"`
-	Color    string `json:"color,omitempty" jsonschema:"description=New highlight color"`
+	ID       string `json:"id" jsonschema:"Highlight ID to update"`
+	Text     string `json:"text,omitempty" jsonschema:"New highlight text (max 8191 chars)"`
+	Note     string `json:"note,omitempty" jsonschema:"New note"`
+	Location int    `json:"location,omitempty" jsonschema:"New position in source"`
+	Color    string `json:"color,omitempty" jsonschema:"New highlight color"`
 }
 
 // AddSourceTagInput defines the parameters for the add_source_tag tool.
 type AddSourceTagInput struct {
-	SourceID string `json:"source_id" jsonschema:"required,description=Source ID to tag"`
-	Name     string `json:"name" jsonschema:"required,description=Tag name"`
+	SourceID string `json:"source_id" jsonschema:"Source ID to tag"`
+	Name     string `json:"name" jsonschema:"Tag name"`
 }
 
 // AddHighlightTagInput defines the parameters for the add_highlight_tag tool.
 type AddHighlightTagInput struct {
-	HighlightID string `json:"highlight_id" jsonschema:"required,description=Highlight ID to tag"`
-	Name        string `json:"name" jsonschema:"required,description=Tag name"`
+	HighlightID string `json:"highlight_id" jsonschema:"Highlight ID to tag"`
+	Name        string `json:"name" jsonschema:"Tag name"`
 }
 
 // BulkHighlightItem represents a single highlight in a bulk create request.
 type BulkHighlightItem struct {
-	Text          string `json:"text" jsonschema:"required,description=Highlight text"`
-	SourceTitle   string `json:"source_title" jsonschema:"required,description=Source title"`
-	SourceAuthor  string `json:"source_author,omitempty" jsonschema:"description=Source author"`
-	SourceURL     string `json:"source_url,omitempty" jsonschema:"description=Source URL"`
-	Note          string `json:"note,omitempty" jsonschema:"description=Note"`
-	Location      int    `json:"location,omitempty" jsonschema:"description=Position in source"`
-	HighlightedAt string `json:"highlighted_at,omitempty" jsonschema:"description=ISO 8601 datetime"`
+	Text          string `json:"text" jsonschema:"Highlight text"`
+	SourceTitle   string `json:"source_title" jsonschema:"Source title"`
+	SourceAuthor  string `json:"source_author,omitempty" jsonschema:"Source author"`
+	SourceURL     string `json:"source_url,omitempty" jsonschema:"Source URL"`
+	Note          string `json:"note,omitempty" jsonschema:"Note"`
+	Location      int    `json:"location,omitempty" jsonschema:"Position in source"`
+	HighlightedAt string `json:"highlighted_at,omitempty" jsonschema:"ISO 8601 datetime"`
 }
 
 // BulkCreateHighlightsInput defines the parameters for the bulk_create_highlights tool.
 type BulkCreateHighlightsInput struct {
-	Highlights []BulkHighlightItem `json:"highlights" jsonschema:"required,description=Array of highlights to create"`
+	Highlights []BulkHighlightItem `json:"highlights" jsonschema:"Array of highlights to create"`
 }
 
 // RegisterWriteTools registers the 7 write profile tools with the MCP server.
