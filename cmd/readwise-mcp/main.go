@@ -23,7 +23,11 @@ func main() {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 
-	srv := server.New(cfg, logger)
+	srv, err := server.New(cfg, logger)
+	if err != nil {
+		logger.Error("failed to create server", "error", err)
+		os.Exit(1)
+	}
 
 	if err := srv.ListenAndServe(); err != nil {
 		logger.Error("server failed", "error", err)

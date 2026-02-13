@@ -21,7 +21,8 @@ type Server struct {
 }
 
 // New creates a new Server with the given configuration.
-func New(cfg types.Config, logger *slog.Logger) *Server {
+// Returns an error if profile resolution fails.
+func New(cfg types.Config, logger *slog.Logger) (*Server, error) {
 	mcpServer := mcp.NewServer(
 		&mcp.Implementation{
 			Name:    "readwise-mcp-server",
@@ -42,7 +43,9 @@ func New(cfg types.Config, logger *slog.Logger) *Server {
 
 	// Register tools based on active profiles
 	apiClient := api.NewClient()
-	tools.RegisterAllTools(mcpServer, apiClient, cfg.Profiles)
+	if err := tools.RegisterAllTools(mcpServer, apiClient, cfg.Profiles); err != nil {
+		return nil, fmt.Errorf("failed to resolve profiles: %w", err)
+	}
 
 	s.handler = mcp.NewStreamableHTTPHandler(
 		func(r *http.Request) *mcp.Server {
@@ -58,7 +61,7 @@ func New(cfg types.Config, logger *slog.Logger) *Server {
 	s.mux.HandleFunc("/health", s.handleHealth)
 	s.mux.HandleFunc("/ready", s.handleReady)
 
-	return s
+	return s, nil
 }
 
 // ListenAndServe starts the HTTP server on the configured port.
