@@ -11,3 +11,10 @@
 # Claude Code
 # ===================
 .conductor/
+.claude/copyedit/
+.claude/jira/
+
+# ===================
+# Build artifacts
+# ===================
+build/
