@@ -3,7 +3,9 @@
     "allow": [
       "Bash(.specify/scripts/bash/setup-plan.sh:*)",
       "Bash(go mod tidy:*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: implement Readwise and Reader tools \\(T018-T034\\)\n\nAdd Readwise v2 API methods \\(list/get books, highlights, export,\ndaily review, tags\\) and Reader v3 API methods \\(list/get documents,\ntags\\). Implement all 13 read-only MCP tool handlers with parameter\nvalidation and API key extraction via auth package. Add search tools\nfor highlights and documents with relevance scoring. Create tool\nregistry with profile-based registration.\n\nBreak server->tools import cycle by extracting auth functions to\ninternal/auth package.\n\nAssisted-By: 🤖 Claude Code\nEOF\n\\)\")"
     ]
   }
 }

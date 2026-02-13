@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/rhuss/readwise-mcp-server/internal/auth"
 )
 
 func TestExtractAPIKeyFromHeader(t *testing.T) {
@@ -58,9 +59,9 @@ func TestExtractAPIKeyFromHeader(t *testing.T) {
 			for k, v := range tt.headers {
 				h.Set(k, v)
 			}
-			got := extractAPIKeyFromHeader(h)
+			got := auth.ExtractAPIKeyFromHeader(h)
 			if got != tt.expected {
-				t.Errorf("extractAPIKeyFromHeader() = %q, want %q", got, tt.expected)
+				t.Errorf("ExtractAPIKeyFromHeader() = %q, want %q", got, tt.expected)
 			}
 		})
 	}
