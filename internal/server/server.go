@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rhuss/readwise-mcp-server/internal/api"
+	"github.com/rhuss/readwise-mcp-server/internal/cache"
 	"github.com/rhuss/readwise-mcp-server/internal/tools"
 	"github.com/rhuss/readwise-mcp-server/internal/types"
 )
@@ -43,7 +44,8 @@ func New(cfg types.Config, logger *slog.Logger) (*Server, error) {
 
 	// Register tools based on active profiles
 	apiClient := api.NewClient()
-	if err := tools.RegisterAllTools(mcpServer, apiClient, cfg.Profiles); err != nil {
+	cm := cache.NewManager(cfg.CacheMaxSizeMB, cfg.CacheTTLSeconds, cfg.CacheEnabled)
+	if err := tools.RegisterAllTools(mcpServer, apiClient, cm, cfg.Profiles); err != nil {
 		return nil, fmt.Errorf("failed to resolve profiles: %w", err)
 	}
 
