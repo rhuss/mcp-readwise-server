@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: readwise-mcp
+
+resources:
+  - readwise-mcp.yml
+  - vpa.yml
+
+configMapGenerator:
+  - name: readwise-mcp-nginx
+    files:
+      - nginx.conf
