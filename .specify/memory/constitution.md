@@ -1,50 +1,35 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Readwise MCP Server Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Stateless MCP Server
+The server operates statelessly with API key passthrough. No server-side credential storage. Clients provide their own Readwise API key per request. The server is a thin, secure proxy layer between MCP clients and the Readwise/Reader APIs.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Profile-Based Tool Exposure
+Tools are grouped into profiles (readwise, reader, write, video, destructive) that control which capabilities are available. Profiles are composable, have explicit dependencies, and support shortcuts for common configurations. This keeps the tool surface area intentional and controllable.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Go Implementation
+The server is written in Go, targeting linux/arm64 for deployment on a home k3s cluster. Build with Podman, deploy with Kustomize. Follow standard Go project layout with `cmd/` and `internal/` packages.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Test-First Development
+TDD is mandatory. Unit tests cover tool parameter validation, API client behavior, cache logic, and profile resolution. Integration tests use a mock Readwise API server. Tests must pass before any merge.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Caching for Performance
+Server-side LRU caching for read-heavy endpoints (exports, document lists, tags). Write operations invalidate relevant caches. Cache keys are isolated per API key (hashed). Memory-bounded with configurable limits.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### VI. Transparent Error Handling
+API errors (including rate limits) are passed through to the client. No server-side retry or rate limiting. Error responses use a consistent structured format with type, code, and message.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## Technology Stack
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- **Language**: Go 1.22+
+- **Container**: Podman (multi-stage builds, linux/arm64)
+- **Orchestration**: k3s with Kustomize
+- **TLS**: nginx sidecar for TLS termination
+- **Protocol**: MCP over SSE/HTTP
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Constitution supersedes ad-hoc decisions. Amendments require explicit discussion and documentation.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-02-13 | **Last Amended**: 2026-02-13

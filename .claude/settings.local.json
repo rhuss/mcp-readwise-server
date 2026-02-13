@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.specify/scripts/bash/setup-plan.sh:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go test:*)"
+    ]
+  }
+}
