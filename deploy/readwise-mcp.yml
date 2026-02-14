@@ -21,6 +21,8 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+            - containerPort: 8443
+              name: https
           env:
             - name: READWISE_PROFILES
               value: "basic"
@@ -34,6 +36,16 @@ spec:
               value: "300"
             - name: CACHE_ENABLED
               value: "true"
+            - name: TLS_CERT_FILE
+              value: "/etc/tls/tls.crt"
+            - name: TLS_KEY_FILE
+              value: "/etc/tls/tls.key"
+            - name: TLS_PORT
+              value: "8443"
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/tls
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -53,28 +65,7 @@ spec:
               port: http
             initialDelaySeconds: 3
             periodSeconds: 10
-        - name: nginx
-          image: docker.io/library/nginx:1.25-alpine
-          ports:
-            - containerPort: 8443
-              name: https
-          volumeMounts:
-            - name: nginx-config
-              mountPath: /etc/nginx/conf.d
-            - name: tls
-              mountPath: /etc/nginx/tls
-              readOnly: true
-          resources:
-            requests:
-              cpu: 50m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
       volumes:
-        - name: nginx-config
-          configMap:
-            name: readwise-mcp-nginx
         - name: tls
           secret:
             secretName: readwise-mcp-tls

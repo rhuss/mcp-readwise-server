@@ -18,3 +18,15 @@
 # Build artifacts
 # ===================
 build/
+*.exe
+*.test
+*.out
+
+# ===================
+# OS / Editor
+# ===================
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.tmp

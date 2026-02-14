@@ -6,8 +6,3 @@ namespace: readwise-mcp
 resources:
   - readwise-mcp.yml
   - vpa.yml
-
-configMapGenerator:
-  - name: readwise-mcp-nginx
-    files:
-      - nginx.conf
