@@ -1,4 +1,4 @@
-# Readwise MCP Server
+# <img src="assets/logo.png" alt="" width="96" valign="middle"> &nbsp;&nbsp; Readwise MCP Server
 
 A Go-based [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that gives AI assistants access to your [Readwise](https://readwise.io) highlights and [Reader](https://read.readwise.io) library.
 
