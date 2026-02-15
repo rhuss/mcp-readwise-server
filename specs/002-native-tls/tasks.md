@@ -17,7 +17,7 @@
 
 **Purpose**: No new project setup needed. This feature modifies existing files only.
 
-- [x] T001 Generate self-signed test certificates for use in unit/integration tests in `internal/server/testdata/`
+- [x] T001 (readwise-mcp-server-8nm.1) Generate self-signed test certificates for use in unit/integration tests in `internal/server/testdata/`
 
 ---
 
@@ -25,8 +25,8 @@
 
 **Purpose**: Add TLS config fields and validation to `types.Config`. MUST complete before user story implementation.
 
-- [x] T002 [P] Add TLS fields (`TLSCertFile`, `TLSKeyFile`, `TLSPort`) to `Config` struct and `LoadConfig()` in `internal/types/common.go`. Add `TLSEnabled() bool`, `TLSAddr() string` methods. Add `ValidateTLS() error` method that checks: both or neither cert/key set, file existence, port conflict with `PORT`.
-- [x] T003 [P] Add unit tests for TLS config loading and validation in `internal/types/common_test.go`: test defaults (TLS disabled), test env var overrides (`TLS_CERT_FILE`, `TLS_KEY_FILE`, `TLS_PORT`), test partial config error (only cert or only key), test port conflict error, test `TLSEnabled()`, test `TLSAddr()`.
+- [x] T002 (readwise-mcp-server-2tg.1) [P] Add TLS fields (`TLSCertFile`, `TLSKeyFile`, `TLSPort`) to `Config` struct and `LoadConfig()` in `internal/types/common.go`. Add `TLSEnabled() bool`, `TLSAddr() string` methods. Add `ValidateTLS() error` method that checks: both or neither cert/key set, file existence, port conflict with `PORT`.
+- [x] T003 (readwise-mcp-server-2tg.2) [P] Add unit tests for TLS config loading and validation in `internal/types/common_test.go`: test defaults (TLS disabled), test env var overrides (`TLS_CERT_FILE`, `TLS_KEY_FILE`, `TLS_PORT`), test partial config error (only cert or only key), test port conflict error, test `TLSEnabled()`, test `TLSAddr()`.
 
 **Checkpoint**: TLS configuration is loadable and validated. No listener changes yet.
 
@@ -40,16 +40,16 @@
 
 ### Tests for User Story 1
 
-- [x] T004 [P] [US1] Write test for TLS listener startup in `internal/server/server_test.go`: create a server with TLS config pointing to test certs, verify HTTPS listener starts on `TLS_PORT` and responds to requests, verify HTTP health listener starts on `PORT` and responds to `/health` and `/ready`.
-- [x] T005 [P] [US1] Write test for certificate expiry warning in `internal/server/server_test.go`: create a certificate expiring in < 30 days, verify the server logs a warning at startup. Create a certificate expiring in > 30 days, verify no warning.
-- [x] T006 [P] [US1] Write test for non-TLS backward compatibility in `internal/server/server_test.go`: create a server without TLS config, verify single HTTP listener serves all endpoints (`/mcp`, `/health`, `/ready`).
+- [x] T004 (readwise-mcp-server-dhe.1) [P] [US1] Write test for TLS listener startup in `internal/server/server_test.go`: create a server with TLS config pointing to test certs, verify HTTPS listener starts on `TLS_PORT` and responds to requests, verify HTTP health listener starts on `PORT` and responds to `/health` and `/ready`.
+- [x] T005 (readwise-mcp-server-dhe.2) [P] [US1] Write test for certificate expiry warning in `internal/server/server_test.go`: create a certificate expiring in < 30 days, verify the server logs a warning at startup. Create a certificate expiring in > 30 days, verify no warning.
+- [x] T006 (readwise-mcp-server-dhe.3) [P] [US1] Write test for non-TLS backward compatibility in `internal/server/server_test.go`: create a server without TLS config, verify single HTTP listener serves all endpoints (`/mcp`, `/health`, `/ready`).
 
 ### Implementation for User Story 1
 
-- [x] T007 [US1] Implement dual-listener logic in `internal/server/server.go`: split `ListenAndServe()` into two modes. When `TLSEnabled()`: create HTTPS `http.Server` with `tls.Config{MinVersion: tls.VersionTLS12}` serving `/mcp` on `TLSAddr()`, create HTTP `http.Server` serving only `/health` and `/ready` on `Addr()`. Start both in goroutines. When not `TLSEnabled()`: keep current single-listener behavior unchanged.
-- [x] T008 [US1] Add certificate expiry check in `internal/server/server.go`: after loading cert with `tls.LoadX509KeyPair`, parse leaf certificate with `x509.ParseCertificate`, check `NotAfter` against `time.Now().Add(30 * 24 * time.Hour)`, log warning if expiring soon.
-- [x] T009 [US1] Add graceful shutdown with signal handling in `cmd/readwise-mcp/main.go`: set up `os.Signal` handler for `SIGTERM` and `SIGINT`, pass `context.Context` to server, call `Shutdown(ctx)` on both HTTP servers with 10-second timeout. Update `Server.ListenAndServe()` signature to accept `context.Context`.
-- [x] T010 [US1] Add TLS validation call in `cmd/readwise-mcp/main.go`: call `cfg.ValidateTLS()` after `LoadConfig()`, exit with error if validation fails.
+- [x] T007 (readwise-mcp-server-dhe.4) [US1] Implement dual-listener logic in `internal/server/server.go`: split `ListenAndServe()` into two modes. When `TLSEnabled()`: create HTTPS `http.Server` with `tls.Config{MinVersion: tls.VersionTLS12}` serving `/mcp` on `TLSAddr()`, create HTTP `http.Server` serving only `/health` and `/ready` on `Addr()`. Start both in goroutines. When not `TLSEnabled()`: keep current single-listener behavior unchanged.
+- [x] T008 (readwise-mcp-server-dhe.5) [US1] Add certificate expiry check in `internal/server/server.go`: after loading cert with `tls.LoadX509KeyPair`, parse leaf certificate with `x509.ParseCertificate`, check `NotAfter` against `time.Now().Add(30 * 24 * time.Hour)`, log warning if expiring soon.
+- [x] T009 (readwise-mcp-server-dhe.6) [US1] Add graceful shutdown with signal handling in `cmd/readwise-mcp/main.go`: set up `os.Signal` handler for `SIGTERM` and `SIGINT`, pass `context.Context` to server, call `Shutdown(ctx)` on both HTTP servers with 10-second timeout. Update `Server.ListenAndServe()` signature to accept `context.Context`.
+- [x] T010 (readwise-mcp-server-dhe.7) [US1] Add TLS validation call in `cmd/readwise-mcp/main.go`: call `cfg.ValidateTLS()` after `LoadConfig()`, exit with error if validation fails.
 
 **Checkpoint**: Server can serve HTTPS with dual listeners. Backward compatibility preserved.
 
@@ -75,10 +75,10 @@ This story is already covered by T006 (backward compatibility test) and the cond
 
 ### Implementation for User Story 3
 
-- [x] T011 [US3] Update `deploy/readwise-mcp.yml`: remove nginx sidecar container (lines 56-73), remove nginx-config volume (line 74-76), keep tls volume but mount it into Go container at `/etc/tls` (read-only). Add env vars `TLS_CERT_FILE=/etc/tls/tls.crt`, `TLS_KEY_FILE=/etc/tls/tls.key`, `TLS_PORT=8443`. Add `containerPort: 8443` named `https` to Go container. Keep health/readiness probes pointing to `http` port unchanged.
-- [x] T012 [US3] Update `deploy/kustomization.yml`: remove the `configMapGenerator` section for `readwise-mcp-nginx`.
-- [x] T013 [US3] Delete `deploy/nginx.conf` (no longer needed).
-- [x] T014 [US3] Update `Containerfile`: add `EXPOSE 8443` after existing `EXPOSE 8080`.
+- [x] T011 (readwise-mcp-server-873.1) [US3] Update `deploy/readwise-mcp.yml`: remove nginx sidecar container (lines 56-73), remove nginx-config volume (line 74-76), keep tls volume but mount it into Go container at `/etc/tls` (read-only). Add env vars `TLS_CERT_FILE=/etc/tls/tls.crt`, `TLS_KEY_FILE=/etc/tls/tls.key`, `TLS_PORT=8443`. Add `containerPort: 8443` named `https` to Go container. Keep health/readiness probes pointing to `http` port unchanged.
+- [x] T012 (readwise-mcp-server-873.2) [US3] Update `deploy/kustomization.yml`: remove the `configMapGenerator` section for `readwise-mcp-nginx`.
+- [x] T013 (readwise-mcp-server-873.3) [US3] Delete `deploy/nginx.conf` (no longer needed).
+- [x] T014 (readwise-mcp-server-873.4) [US3] Update `Containerfile`: add `EXPOSE 8443` after existing `EXPOSE 8080`.
 
 **Checkpoint**: Kubernetes deployment runs single-container Pod with native TLS.
 
@@ -88,9 +88,9 @@ This story is already covered by T006 (backward compatibility test) and the cond
 
 **Purpose**: Constitution update and final validation.
 
-- [x] T015 Update `specs/constitution.md` Technology Stack section: change "TLS: nginx sidecar for TLS termination" to "TLS: Native Go TLS (nginx sidecar optional)".
-- [x] T016 Run all tests with `go test ./...` and verify passing.
-- [x] T017 Validate quickstart.md scenarios manually: test both TLS and non-TLS startup locally.
+- [x] T015 (readwise-mcp-server-r9i.1) Update `specs/constitution.md` Technology Stack section: change "TLS: nginx sidecar for TLS termination" to "TLS: Native Go TLS (nginx sidecar optional)".
+- [x] T016 (readwise-mcp-server-r9i.2) Run all tests with `go test ./...` and verify passing.
+- [x] T017 (readwise-mcp-server-r9i.3) Validate quickstart.md scenarios manually: test both TLS and non-TLS startup locally.
 
 ---
 
