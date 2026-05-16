@@ -5,7 +5,7 @@
 .specify/scripts/
 
 # Spec-kit slash commands (installed by plugin)
-.claude/commands/speckit.*.md
+.claude/skills/.md
 
 # ===================
 # Claude Code
@@ -30,3 +30,9 @@ build/
 .vscode/
 *.swp
 *.tmp
+
+# spex: generated/local files
+.claude/skills/
+.claude/settings.local.json
+.specify/.spex-phase
+.specify/.spex-state
