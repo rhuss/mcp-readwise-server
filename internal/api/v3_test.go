@@ -9,11 +9,13 @@ import (
 	"testing"
 
 	"github.com/rhuss/readwise-mcp-server/internal/types"
+	"golang.org/x/time/rate"
 )
 
 func newTestV3Server(handler http.HandlerFunc) (*Client, *httptest.Server) {
 	ts := httptest.NewServer(handler)
-	client := NewClientWithBaseURLs(ts.URL, ts.URL)
+	// Use a high-rate limiter in tests to avoid delays
+	client := NewClientWithRateLimiter(ts.URL, ts.URL, rate.NewLimiter(rate.Inf, 1))
 	return client, ts
 }
 
@@ -69,9 +71,10 @@ func TestListDocumentsPagination(t *testing.T) {
 	client, ts := newTestV3Server(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		if callCount == 1 {
+			cursor := json.Number("12345")
 			resp := types.CursorResponse[types.Document]{
 				Count:          1,
-				NextPageCursor: "cursor2",
+				NextPageCursor: &cursor,
 				Results:        []types.Document{{ID: "doc1", Title: "First"}},
 			}
 			json.NewEncoder(w).Encode(resp)
@@ -99,9 +102,10 @@ func TestListDocumentsPagination(t *testing.T) {
 
 func TestListDocumentsLimit(t *testing.T) {
 	client, ts := newTestV3Server(func(w http.ResponseWriter, r *http.Request) {
+		cursor := json.Number("99999")
 		resp := types.CursorResponse[types.Document]{
 			Count:          3,
-			NextPageCursor: "more",
+			NextPageCursor: &cursor,
 			Results: []types.Document{
 				{ID: "doc1"}, {ID: "doc2"}, {ID: "doc3"},
 			},
@@ -313,5 +317,37 @@ func TestDeleteDocument(t *testing.T) {
 	err := client.DeleteDocument(context.Background(), "key", "doc-1")
 	if err != nil {
 		t.Fatalf("DeleteDocument error: %v", err)
+	}
+}
+
+func TestListDocumentsNumericCursor(t *testing.T) {
+	callCount := 0
+	client, ts := newTestV3Server(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			// Return a numeric cursor (as the real API does)
+			w.Write([]byte(`{"count":1,"nextPageCursor":67890,"results":[{"id":"doc1","title":"First"}]}`))
+		} else {
+			// Second page: null cursor means no more pages
+			w.Write([]byte(`{"count":1,"nextPageCursor":null,"results":[{"id":"doc2","title":"Second"}]}`))
+		}
+	})
+	defer ts.Close()
+
+	result, err := client.ListDocuments(context.Background(), "key", "", "", "", 0)
+	if err != nil {
+		t.Fatalf("ListDocuments error: %v", err)
+	}
+	if len(result.Results) != 2 {
+		t.Fatalf("len(Results) = %d, want 2", len(result.Results))
+	}
+	if callCount != 2 {
+		t.Errorf("callCount = %d, want 2", callCount)
+	}
+	if result.Results[0].Title != "First" {
+		t.Errorf("Results[0].Title = %q, want %q", result.Results[0].Title, "First")
+	}
+	if result.Results[1].Title != "Second" {
+		t.Errorf("Results[1].Title = %q, want %q", result.Results[1].Title, "Second")
 	}
 }

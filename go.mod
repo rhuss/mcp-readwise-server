@@ -2,7 +2,10 @@ module github.com/rhuss/readwise-mcp-server
 
 go 1.25.7
 
-require github.com/modelcontextprotocol/go-sdk v1.3.0
+require (
+	github.com/modelcontextprotocol/go-sdk v1.3.0
+	golang.org/x/time v0.15.0
+)
 
 require (
 	github.com/google/jsonschema-go v0.4.2 // indirect
