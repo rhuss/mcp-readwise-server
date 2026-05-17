@@ -137,10 +137,10 @@ func (c *Client) ExportHighlights(ctx context.Context, apiKey string, updatedAft
 		allResults = append(allResults, page.Results...)
 		totalCount += page.Count
 
-		if page.NextPageCursor == "" {
+		if page.NextPageCursor == nil || page.NextPageCursor.String() == "" {
 			break
 		}
-		cursor = page.NextPageCursor
+		cursor = page.NextPageCursor.String()
 	}
 
 	return &types.CursorResponse[types.ExportSource]{

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -139,10 +140,12 @@ type PageResponse[T any] struct {
 }
 
 // CursorResponse represents a cursor-based paginated API response.
+// NextPageCursor is a pointer to json.Number because the API may return
+// a numeric cursor, a string cursor, or null/omit the field entirely.
 type CursorResponse[T any] struct {
-	Count          int    `json:"count"`
-	NextPageCursor string `json:"nextPageCursor"`
-	Results        []T    `json:"results"`
+	Count          int          `json:"count"`
+	NextPageCursor *json.Number `json:"nextPageCursor"`
+	Results        []T          `json:"results"`
 }
 
 // Addr returns the listen address string for the configured port.

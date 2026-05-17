@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/rhuss/readwise-mcp-server/internal/types"
+	"golang.org/x/time/rate"
 )
 
 func newTestV2Server(handler http.HandlerFunc) (*Client, *httptest.Server) {
 	ts := httptest.NewServer(handler)
-	client := NewClientWithBaseURLs(ts.URL, ts.URL)
+	// Use a high-rate limiter in tests to avoid delays
+	client := NewClientWithRateLimiter(ts.URL, ts.URL, rate.NewLimiter(rate.Inf, 1))
 	return client, ts
 }
 
@@ -152,9 +154,10 @@ func TestExportHighlights(t *testing.T) {
 
 		if callCount == 1 {
 			// First page with a cursor
+			cursor := json.Number("12345")
 			resp := types.CursorResponse[types.ExportSource]{
 				Count:          1,
-				NextPageCursor: "cursor2",
+				NextPageCursor: &cursor,
 				Results: []types.ExportSource{
 					{UserBookID: 1, Title: "Source 1", Highlights: []types.Highlight{{ID: 10, Text: "h1"}}},
 				},
@@ -266,5 +269,50 @@ func TestListHighlightTags(t *testing.T) {
 	}
 	if result[0].Name != "important" {
 		t.Errorf("result[0].Name = %q, want %q", result[0].Name, "important")
+	}
+}
+
+func TestExportHighlightsNumericCursor(t *testing.T) {
+	callCount := 0
+	client, ts := newTestV2Server(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			// Return a numeric cursor (as the real API does)
+			w.Write([]byte(`{"count":1,"nextPageCursor":54321,"results":[{"user_book_id":1,"title":"Source 1","highlights":[{"id":10,"text":"h1"}]}]}`))
+		} else {
+			// Second page: null cursor means no more pages
+			w.Write([]byte(`{"count":1,"nextPageCursor":null,"results":[{"user_book_id":2,"title":"Source 2","highlights":[{"id":20,"text":"h2"}]}]}`))
+		}
+	})
+	defer ts.Close()
+
+	result, err := client.ExportHighlights(context.Background(), "key", "")
+	if err != nil {
+		t.Fatalf("ExportHighlights error: %v", err)
+	}
+	if len(result.Results) != 2 {
+		t.Fatalf("len(Results) = %d, want 2", len(result.Results))
+	}
+	if callCount != 2 {
+		t.Errorf("callCount = %d, want 2", callCount)
+	}
+}
+
+func TestExportHighlightsNullCursor(t *testing.T) {
+	// Verify that a null cursor on the first (and only) page stops pagination
+	client, ts := newTestV2Server(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"count":1,"nextPageCursor":null,"results":[{"user_book_id":1,"title":"Source 1","highlights":[{"id":10,"text":"h1"}]}]}`))
+	})
+	defer ts.Close()
+
+	result, err := client.ExportHighlights(context.Background(), "key", "")
+	if err != nil {
+		t.Fatalf("ExportHighlights error: %v", err)
+	}
+	if len(result.Results) != 1 {
+		t.Fatalf("len(Results) = %d, want 1", len(result.Results))
+	}
+	if result.Results[0].Title != "Source 1" {
+		t.Errorf("Results[0].Title = %q, want %q", result.Results[0].Title, "Source 1")
 	}
 }

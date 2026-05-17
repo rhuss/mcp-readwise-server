@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -18,89 +21,142 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
+const (
+	maxRetries     = 3
+	defaultBackoff = 60 * time.Second
+)
+
 // Client wraps an HTTP client for Readwise/Reader API calls.
 type Client struct {
-	httpClient *http.Client
-	v2BaseURL  string
-	v3BaseURL  string
+	httpClient  *http.Client
+	v2BaseURL   string
+	v3BaseURL   string
+	rateLimiter *rate.Limiter
 }
 
 // NewClient creates a new API client with default configuration.
 func NewClient() *Client {
 	return &Client{
-		httpClient: &http.Client{Timeout: defaultTimeout},
-		v2BaseURL:  ReadwiseV2BaseURL,
-		v3BaseURL:  ReaderV3BaseURL,
+		httpClient:  &http.Client{Timeout: defaultTimeout},
+		v2BaseURL:   ReadwiseV2BaseURL,
+		v3BaseURL:   ReaderV3BaseURL,
+		rateLimiter: rate.NewLimiter(rate.Every(3*time.Second), 1),
 	}
 }
 
 // NewClientWithBaseURLs creates a client with custom base URLs (for testing).
 func NewClientWithBaseURLs(v2, v3 string) *Client {
 	return &Client{
-		httpClient: &http.Client{Timeout: defaultTimeout},
-		v2BaseURL:  v2,
-		v3BaseURL:  v3,
+		httpClient:  &http.Client{Timeout: defaultTimeout},
+		v2BaseURL:   v2,
+		v3BaseURL:   v3,
+		rateLimiter: rate.NewLimiter(rate.Every(3*time.Second), 1),
+	}
+}
+
+// NewClientWithRateLimiter creates a client with a custom rate limiter (for testing).
+func NewClientWithRateLimiter(v2, v3 string, limiter *rate.Limiter) *Client {
+	return &Client{
+		httpClient:  &http.Client{Timeout: defaultTimeout},
+		v2BaseURL:   v2,
+		v3BaseURL:   v3,
+		rateLimiter: limiter,
 	}
 }
 
 // doRequest executes an HTTP request with the given API key and returns the response body.
-func (c *Client) doRequest(ctx context.Context, method, url, apiKey string, body interface{}) ([]byte, error) {
-	var reqBody io.Reader
+// It enforces client-side rate limiting and retries on 429 responses with exponential backoff.
+func (c *Client) doRequest(ctx context.Context, method, reqURL, apiKey string, body interface{}) ([]byte, error) {
+	var bodyData []byte
 	if body != nil {
-		data, err := json.Marshal(body)
+		var err error
+		bodyData, err = json.Marshal(body)
 		if err != nil {
 			return nil, NewInternalError(fmt.Sprintf("failed to marshal request body: %v", err))
 		}
-		reqBody = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
-	if err != nil {
-		return nil, NewInternalError(fmt.Sprintf("failed to create request: %v", err))
-	}
-
-	req.Header.Set("Authorization", "Token "+apiKey)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, NewAPIError("connection_error", fmt.Sprintf("failed to connect to API: %v", err))
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, NewInternalError(fmt.Sprintf("failed to read response body: %v", err))
-	}
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		retryAfter := 60
-		if v := resp.Header.Get("Retry-After"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil {
-				retryAfter = n
-			}
+	var lastRetryAfter int
+	for attempt := range maxRetries {
+		// Enforce client-side rate limiting
+		if err := c.rateLimiter.Wait(ctx); err != nil {
+			return nil, NewInternalError(fmt.Sprintf("rate limiter wait cancelled: %v", err))
 		}
-		return nil, NewRateLimitError(retryAfter)
+
+		var reqBody io.Reader
+		if bodyData != nil {
+			reqBody = bytes.NewReader(bodyData)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, reqURL, reqBody)
+		if err != nil {
+			return nil, NewInternalError(fmt.Sprintf("failed to create request: %v", err))
+		}
+
+		req.Header.Set("Authorization", "Token "+apiKey)
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, NewAPIError("connection_error", fmt.Sprintf("failed to connect to API: %v", err))
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, NewInternalError(fmt.Sprintf("failed to read response body: %v", err))
+		}
+
+		if resp.StatusCode == http.StatusTooManyRequests {
+			retryAfter := 60
+			if v := resp.Header.Get("Retry-After"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					retryAfter = n
+				}
+			}
+			lastRetryAfter = retryAfter
+
+			// If we have retries left, wait and retry
+			if attempt < maxRetries-1 {
+				backoff := time.Duration(retryAfter) * time.Second
+				// Add jitter: 0-25% of backoff duration
+				jitter := time.Duration(float64(backoff) * 0.25 * rand.Float64())
+				backoff += jitter
+
+				select {
+				case <-ctx.Done():
+					return nil, NewInternalError(fmt.Sprintf("request cancelled during retry backoff: %v", ctx.Err()))
+				case <-time.After(backoff):
+					continue
+				}
+			}
+
+			// All retries exhausted
+			return nil, NewRateLimitError(lastRetryAfter)
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return nil, NewAuthError("Invalid or expired API key")
+		}
+
+		if resp.StatusCode == http.StatusNoContent {
+			return nil, nil
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, NewAPIError(
+				fmt.Sprintf("http_%d", resp.StatusCode),
+				fmt.Sprintf("API returned status %d: %s", resp.StatusCode, string(respBody)),
+			)
+		}
+
+		return respBody, nil
 	}
 
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, NewAuthError("Invalid or expired API key")
-	}
-
-	if resp.StatusCode == http.StatusNoContent {
-		return nil, nil
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, NewAPIError(
-			fmt.Sprintf("http_%d", resp.StatusCode),
-			fmt.Sprintf("API returned status %d: %s", resp.StatusCode, string(respBody)),
-		)
-	}
-
-	return respBody, nil
+	// Should not be reached, but just in case
+	return nil, NewRateLimitError(lastRetryAfter)
 }
 
 // GetV2 performs a GET request against the Readwise v2 API.
