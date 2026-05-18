@@ -154,10 +154,9 @@ func TestExportHighlights(t *testing.T) {
 
 		if callCount == 1 {
 			// First page with a cursor
-			cursor := json.Number("12345")
 			resp := types.CursorResponse[types.ExportSource]{
 				Count:          1,
-				NextPageCursor: &cursor,
+				NextPageCursor: types.FlexCursor{Value: "12345", Set: true},
 				Results: []types.ExportSource{
 					{UserBookID: 1, Title: "Source 1", Highlights: []types.Highlight{{ID: 10, Text: "h1"}}},
 				},

@@ -139,13 +139,48 @@ type PageResponse[T any] struct {
 	Results  []T    `json:"results"`
 }
 
+// FlexCursor handles both numeric cursors (classic Readwise API) and
+// ULID string cursors (Reader API) in a single type.
+type FlexCursor struct {
+	Value string
+	Set   bool
+}
+
+func (c *FlexCursor) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		c.Value = ""
+		c.Set = false
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		c.Value = s
+		c.Set = s != ""
+		return nil
+	}
+	var n json.Number
+	if err := json.Unmarshal(data, &n); err == nil {
+		c.Value = n.String()
+		c.Set = true
+		return nil
+	}
+	c.Value = ""
+	c.Set = false
+	return nil
+}
+
+func (c FlexCursor) MarshalJSON() ([]byte, error) {
+	if !c.Set {
+		return []byte("null"), nil
+	}
+	return json.Marshal(c.Value)
+}
+
 // CursorResponse represents a cursor-based paginated API response.
-// NextPageCursor is a pointer to json.Number because the API may return
-// a numeric cursor, a string cursor, or null/omit the field entirely.
 type CursorResponse[T any] struct {
-	Count          int          `json:"count"`
-	NextPageCursor *json.Number `json:"nextPageCursor"`
-	Results        []T          `json:"results"`
+	Count          int        `json:"count"`
+	NextPageCursor FlexCursor `json:"nextPageCursor"`
+	Results        []T        `json:"results"`
 }
 
 // Addr returns the listen address string for the configured port.
