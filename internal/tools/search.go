@@ -10,6 +10,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rhuss/readwise-mcp-server/internal/api"
 	"github.com/rhuss/readwise-mcp-server/internal/auth"
+	"github.com/rhuss/readwise-mcp-server/internal/cache"
 	"github.com/rhuss/readwise-mcp-server/internal/types"
 )
 
@@ -42,22 +43,22 @@ type SearchDocumentResult struct {
 }
 
 // RegisterSearchHighlightsTool registers the search_highlights tool.
-func RegisterSearchHighlightsTool(s *mcp.Server, client *api.Client) {
+func RegisterSearchHighlightsTool(s *mcp.Server, client *api.Client, cm *cache.Manager) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_highlights",
 		Description: "Search highlights by query. Searches across highlight text, notes, and source titles. Returns results ranked by relevance.",
-	}, makeSearchHighlightsHandler(client))
+	}, makeSearchHighlightsHandler(client, cm))
 }
 
 // RegisterSearchDocumentsTool registers the search_documents tool.
-func RegisterSearchDocumentsTool(s *mcp.Server, client *api.Client) {
+func RegisterSearchDocumentsTool(s *mcp.Server, client *api.Client, cm *cache.Manager) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "search_documents",
 		Description: "Search Reader documents by query. Searches across title, author, summary, and notes. Supports location and category filtering.",
-	}, makeSearchDocumentsHandler(client))
+	}, makeSearchDocumentsHandler(client, cm))
 }
 
-func makeSearchHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[SearchHighlightsInput, any] {
+func makeSearchHighlightsHandler(client *api.Client, cm *cache.Manager) mcp.ToolHandlerFor[SearchHighlightsInput, any] {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input SearchHighlightsInput) (*mcp.CallToolResult, any, error) {
 		apiKey := auth.APIKeyFromRequest(req)
 		if apiKey == "" {
@@ -75,13 +76,12 @@ func makeSearchHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[SearchHi
 			limit = 200
 		}
 
-		// Fetch export data (in future phases, this will use the cache)
-		exportData, err := client.ExportHighlights(ctx, apiKey, "")
+		sources, err := getOrFetchExportSources(ctx, client, cm, apiKey)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		results := searchHighlights(exportData.Results, input.Query, input.SourceID, limit)
+		results := searchHighlights(sources, input.Query, input.SourceID, limit)
 
 		data, _ := json.Marshal(results)
 		return &mcp.CallToolResult{
@@ -90,7 +90,7 @@ func makeSearchHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[SearchHi
 	}
 }
 
-func makeSearchDocumentsHandler(client *api.Client) mcp.ToolHandlerFor[SearchDocumentsInput, any] {
+func makeSearchDocumentsHandler(client *api.Client, cm *cache.Manager) mcp.ToolHandlerFor[SearchDocumentsInput, any] {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input SearchDocumentsInput) (*mcp.CallToolResult, any, error) {
 		apiKey := auth.APIKeyFromRequest(req)
 		if apiKey == "" {
@@ -108,13 +108,25 @@ func makeSearchDocumentsHandler(client *api.Client) mcp.ToolHandlerFor[SearchDoc
 			limit = 200
 		}
 
-		// Fetch document list (in future phases, this will use the cache)
-		docData, err := client.ListDocuments(ctx, apiKey, "", "", "", 0)
-		if err != nil {
-			return nil, nil, err
+		var docs []types.Document
+		if cached := cm.Get(apiKey, "/api/v3/list/", nil); cached != nil {
+			var resp types.CursorResponse[types.Document]
+			if err := json.Unmarshal(cached, &resp); err == nil {
+				docs = resp.Results
+			}
+		}
+		if docs == nil {
+			docData, err := client.ListDocuments(ctx, apiKey, "", "", "", 0)
+			if err != nil {
+				return nil, nil, err
+			}
+			docs = docData.Results
+			if data, err := json.Marshal(docData); err == nil {
+				cm.Put(apiKey, "/api/v3/list/", nil, data)
+			}
 		}
 
-		results := searchDocuments(docData.Results, input.Query, input.Location, input.Category, limit)
+		results := searchDocuments(docs, input.Query, input.Location, input.Category, limit)
 
 		data, _ := json.Marshal(results)
 		return &mcp.CallToolResult{

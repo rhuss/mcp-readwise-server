@@ -1,8 +1,16 @@
 package tools
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/rhuss/readwise-mcp-server/internal/api"
+	"github.com/rhuss/readwise-mcp-server/internal/cache"
 	"github.com/rhuss/readwise-mcp-server/internal/types"
 )
 
@@ -217,5 +225,214 @@ func TestSearchDocumentsInSummaryAndNotes(t *testing.T) {
 	results := searchDocuments(docs, "search term", "", "", 50)
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+}
+
+func newSearchTestDeps(handler http.HandlerFunc) (*api.Client, *cache.Manager, *httptest.Server) {
+	ts := httptest.NewServer(handler)
+	client := api.NewClientWithBaseURLs(ts.URL, ts.URL)
+	cm := cache.NewManager(16, 300, true)
+	return client, cm, ts
+}
+
+func TestSearchDocumentsCacheHit(t *testing.T) {
+	var requestCount atomic.Int32
+	docs := types.CursorResponse[types.Document]{
+		Count:   2,
+		Results: []types.Document{
+			{ID: "1", Title: "Go Programming", Author: "Rob Pike"},
+			{ID: "2", Title: "Rust Programming", Author: "Mozilla"},
+		},
+	}
+
+	client, cm, ts := newSearchTestDeps(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		json.NewEncoder(w).Encode(docs)
+	})
+	defer ts.Close()
+
+	handler := makeSearchDocumentsHandler(client, cm)
+	req := newReqWithAPIKey("test-key")
+
+	result1, _, err := handler(context.Background(), req, SearchDocumentsInput{Query: "Programming"})
+	if err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if result1 == nil {
+		t.Fatal("first call: expected result")
+	}
+	firstRequestCount := requestCount.Load()
+	if firstRequestCount == 0 {
+		t.Fatal("expected at least one upstream request on first call")
+	}
+
+	result2, _, err := handler(context.Background(), req, SearchDocumentsInput{Query: "Programming"})
+	if err != nil {
+		t.Fatalf("second call: %v", err)
+	}
+	if result2 == nil {
+		t.Fatal("second call: expected result")
+	}
+
+	if requestCount.Load() != firstRequestCount {
+		t.Errorf("expected no additional upstream requests on cache hit, got %d total", requestCount.Load())
+	}
+
+	var results []SearchDocumentResult
+	textContent := result2.Content[0].(*mcp.TextContent)
+	if err := json.Unmarshal([]byte(textContent.Text), &results); err != nil {
+		t.Fatalf("failed to unmarshal cached result: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results from cache, got %d", len(results))
+	}
+}
+
+func TestSearchDocumentsCacheMiss(t *testing.T) {
+	var requestCount atomic.Int32
+	docs := types.CursorResponse[types.Document]{
+		Count:   1,
+		Results: []types.Document{
+			{ID: "1", Title: "Go Programming", Author: "Rob Pike"},
+		},
+	}
+
+	client, cm, ts := newSearchTestDeps(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		json.NewEncoder(w).Encode(docs)
+	})
+	defer ts.Close()
+
+	handler := makeSearchDocumentsHandler(client, cm)
+	req := newReqWithAPIKey("test-key")
+
+	result, _, err := handler(context.Background(), req, SearchDocumentsInput{Query: "Go"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result")
+	}
+	if requestCount.Load() == 0 {
+		t.Fatal("expected upstream requests on cache miss")
+	}
+
+	var results []SearchDocumentResult
+	textContent := result.Content[0].(*mcp.TextContent)
+	if err := json.Unmarshal([]byte(textContent.Text), &results); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Document.Title != "Go Programming" {
+		t.Errorf("expected 'Go Programming', got %q", results[0].Document.Title)
+	}
+}
+
+func TestSearchHighlightsCacheHit(t *testing.T) {
+	var requestCount atomic.Int32
+	exports := types.CursorResponse[types.ExportSource]{
+		Count: 1,
+		Results: []types.ExportSource{
+			{
+				UserBookID: 1,
+				Title:      "Test Book",
+				Highlights: []types.Highlight{
+					{ID: 1, Text: "important insight about Go"},
+					{ID: 2, Text: "another highlight"},
+				},
+			},
+		},
+	}
+
+	client, cm, ts := newSearchTestDeps(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		json.NewEncoder(w).Encode(exports)
+	})
+	defer ts.Close()
+
+	handler := makeSearchHighlightsHandler(client, cm)
+	req := newReqWithAPIKey("test-key")
+
+	result1, _, err := handler(context.Background(), req, SearchHighlightsInput{Query: "Go"})
+	if err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	if result1 == nil {
+		t.Fatal("first call: expected result")
+	}
+	firstRequestCount := requestCount.Load()
+	if firstRequestCount == 0 {
+		t.Fatal("expected at least one upstream request on first call")
+	}
+
+	result2, _, err := handler(context.Background(), req, SearchHighlightsInput{Query: "Go"})
+	if err != nil {
+		t.Fatalf("second call: %v", err)
+	}
+	if result2 == nil {
+		t.Fatal("second call: expected result")
+	}
+
+	if requestCount.Load() != firstRequestCount {
+		t.Errorf("expected no additional upstream requests on cache hit, got %d total", requestCount.Load())
+	}
+
+	var results []SearchHighlightResult
+	textContent := result2.Content[0].(*mcp.TextContent)
+	if err := json.Unmarshal([]byte(textContent.Text), &results); err != nil {
+		t.Fatalf("failed to unmarshal cached result: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result from cache, got %d", len(results))
+	}
+	if results[0].Highlight.Text != "important insight about Go" {
+		t.Errorf("expected cached highlight text, got %q", results[0].Highlight.Text)
+	}
+}
+
+func TestSearchHighlightsCacheMiss(t *testing.T) {
+	var requestCount atomic.Int32
+	exports := types.CursorResponse[types.ExportSource]{
+		Count: 1,
+		Results: []types.ExportSource{
+			{
+				UserBookID: 1,
+				Title:      "Test Book",
+				Highlights: []types.Highlight{
+					{ID: 1, Text: "insight about Go"},
+				},
+			},
+		},
+	}
+
+	client, cm, ts := newSearchTestDeps(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		json.NewEncoder(w).Encode(exports)
+	})
+	defer ts.Close()
+
+	handler := makeSearchHighlightsHandler(client, cm)
+	req := newReqWithAPIKey("test-key")
+
+	result, _, err := handler(context.Background(), req, SearchHighlightsInput{Query: "Go"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if requestCount.Load() == 0 {
+		t.Fatal("expected upstream request on cache miss")
+	}
+
+	var results []SearchHighlightResult
+	textContent := result.Content[0].(*mcp.TextContent)
+	if err := json.Unmarshal([]byte(textContent.Text), &results); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Highlight.Text != "insight about Go" {
+		t.Errorf("expected 'insight about Go', got %q", results[0].Highlight.Text)
 	}
 }

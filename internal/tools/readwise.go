@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rhuss/readwise-mcp-server/internal/api"
 	"github.com/rhuss/readwise-mcp-server/internal/auth"
+	"github.com/rhuss/readwise-mcp-server/internal/cache"
+	"github.com/rhuss/readwise-mcp-server/internal/types"
 )
 
 // ListSourcesInput defines the parameters for the list_sources tool.
@@ -52,7 +55,7 @@ type ListHighlightTagsInput struct {
 }
 
 // RegisterReadwiseTools registers the 9 readwise profile tools with the MCP server.
-func RegisterReadwiseTools(s *mcp.Server, client *api.Client) {
+func RegisterReadwiseTools(s *mcp.Server, client *api.Client, cm *cache.Manager) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_sources",
 		Description: "List highlight sources (books, articles, etc.) with pagination and optional filtering by category or update time.",
@@ -66,7 +69,7 @@ func RegisterReadwiseTools(s *mcp.Server, client *api.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_highlights",
 		Description: "List highlights with pagination and optional filtering by source ID or update time.",
-	}, makeListHighlightsHandler(client))
+	}, makeListHighlightsHandler(client, cm))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_highlight",
@@ -76,7 +79,7 @@ func RegisterReadwiseTools(s *mcp.Server, client *api.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "export_highlights",
 		Description: "Bulk export all highlights grouped by source. Paginates through all pages automatically. Primary data source for search.",
-	}, makeExportHighlightsHandler(client))
+	}, makeExportHighlightsHandler(client, cm))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_daily_review",
@@ -142,11 +145,27 @@ func makeGetSourceHandler(client *api.Client) mcp.ToolHandlerFor[GetSourceInput,
 	}
 }
 
-func makeListHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[ListHighlightsInput, any] {
+func isNumericID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, r := range id {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func makeListHighlightsHandler(client *api.Client, cm *cache.Manager) mcp.ToolHandlerFor[ListHighlightsInput, any] {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input ListHighlightsInput) (*mcp.CallToolResult, any, error) {
 		apiKey := auth.APIKeyFromRequest(req)
 		if apiKey == "" {
 			return nil, nil, fmt.Errorf("missing API key: provide your Readwise API key via the Authorization header")
+		}
+
+		if input.SourceID != "" && !isNumericID(input.SourceID) {
+			return listHighlightsForULID(ctx, client, cm, apiKey, input.SourceID)
 		}
 
 		if input.PageSize < 0 || input.PageSize > 1000 {
@@ -166,6 +185,60 @@ func makeListHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[ListHighli
 			Content: []mcp.Content{&mcp.TextContent{Text: string(data)}},
 		}, nil, nil
 	}
+}
+
+func getOrFetchExportSources(ctx context.Context, client *api.Client, cm *cache.Manager, apiKey string) ([]types.ExportSource, error) {
+	if cached := cm.Get(apiKey, "/api/v2/export/", nil); cached != nil {
+		var resp types.CursorResponse[types.ExportSource]
+		if err := json.Unmarshal(cached, &resp); err == nil {
+			return resp.Results, nil
+		}
+	}
+	exportData, err := client.ExportHighlights(ctx, apiKey, "")
+	if err != nil {
+		return nil, err
+	}
+	if data, err := json.Marshal(exportData); err == nil {
+		cm.Put(apiKey, "/api/v2/export/", nil, data)
+	}
+	return exportData.Results, nil
+}
+
+func listHighlightsForULID(ctx context.Context, client *api.Client, cm *cache.Manager, apiKey, sourceID string) (*mcp.CallToolResult, any, error) {
+	doc, err := client.GetDocument(ctx, apiKey, sourceID, false)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get document %s: %w", sourceID, err)
+	}
+
+	sources, err := getOrFetchExportSources(ctx, client, cm, apiKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var highlights []types.Highlight
+	for _, source := range sources {
+		if matchesDocument(source, doc) {
+			highlights = append(highlights, source.Highlights...)
+		}
+	}
+
+	data, _ := json.Marshal(highlights)
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: string(data)}},
+	}, nil, nil
+}
+
+func matchesDocument(source types.ExportSource, doc *types.Document) bool {
+	if doc.SourceURL != "" && source.SourceURL != "" &&
+		strings.EqualFold(source.SourceURL, doc.SourceURL) {
+		return true
+	}
+	if doc.Title != "" && source.Title != "" &&
+		strings.EqualFold(source.Title, doc.Title) &&
+		(doc.Author == "" || source.Author == "" || strings.EqualFold(source.Author, doc.Author)) {
+		return true
+	}
+	return false
 }
 
 func makeGetHighlightHandler(client *api.Client) mcp.ToolHandlerFor[GetHighlightInput, any] {
@@ -190,7 +263,7 @@ func makeGetHighlightHandler(client *api.Client) mcp.ToolHandlerFor[GetHighlight
 	}
 }
 
-func makeExportHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[ExportHighlightsInput, any] {
+func makeExportHighlightsHandler(client *api.Client, cm *cache.Manager) mcp.ToolHandlerFor[ExportHighlightsInput, any] {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input ExportHighlightsInput) (*mcp.CallToolResult, any, error) {
 		apiKey := auth.APIKeyFromRequest(req)
 		if apiKey == "" {
@@ -203,6 +276,9 @@ func makeExportHighlightsHandler(client *api.Client) mcp.ToolHandlerFor[ExportHi
 		}
 
 		data, _ := json.Marshal(result)
+		if input.UpdatedAfter == "" {
+			cm.Put(apiKey, "/api/v2/export/", nil, data)
+		}
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{&mcp.TextContent{Text: string(data)}},
 		}, nil, nil
