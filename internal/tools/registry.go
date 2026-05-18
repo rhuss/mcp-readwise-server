@@ -26,15 +26,15 @@ func RegisterAllTools(s *mcp.Server, client *api.Client, cm *cache.Manager, prof
 
 	// Register tools based on active profiles
 	if profileSet["readwise"] {
-		RegisterReadwiseTools(s, client)
+		RegisterReadwiseTools(s, client, cm)
 		if activeTools["search_highlights"] {
-			RegisterSearchHighlightsTool(s, client)
+			RegisterSearchHighlightsTool(s, client, cm)
 		}
 	}
 	if profileSet["reader"] {
 		RegisterReaderTools(s, client)
 		if activeTools["search_documents"] {
-			RegisterSearchDocumentsTool(s, client)
+			RegisterSearchDocumentsTool(s, client, cm)
 		}
 	}
 	if profileSet["write"] {
