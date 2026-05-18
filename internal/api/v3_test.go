@@ -71,10 +71,9 @@ func TestListDocumentsPagination(t *testing.T) {
 	client, ts := newTestV3Server(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		if callCount == 1 {
-			cursor := json.Number("12345")
 			resp := types.CursorResponse[types.Document]{
 				Count:          1,
-				NextPageCursor: &cursor,
+				NextPageCursor: types.FlexCursor{Value: "12345", Set: true},
 				Results:        []types.Document{{ID: "doc1", Title: "First"}},
 			}
 			json.NewEncoder(w).Encode(resp)
@@ -102,10 +101,9 @@ func TestListDocumentsPagination(t *testing.T) {
 
 func TestListDocumentsLimit(t *testing.T) {
 	client, ts := newTestV3Server(func(w http.ResponseWriter, r *http.Request) {
-		cursor := json.Number("99999")
 		resp := types.CursorResponse[types.Document]{
 			Count:          3,
-			NextPageCursor: &cursor,
+			NextPageCursor: types.FlexCursor{Value: "99999", Set: true},
 			Results: []types.Document{
 				{ID: "doc1"}, {ID: "doc2"}, {ID: "doc3"},
 			},

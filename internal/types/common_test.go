@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 )
@@ -245,6 +246,36 @@ func TestValidateTLS(t *testing.T) {
 				}
 			} else if err != nil {
 				t.Errorf("ValidateTLS() = %v, want nil", err)
+			}
+		})
+	}
+}
+
+func TestFlexCursorUnmarshal(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantVal string
+		wantSet bool
+	}{
+		{"numeric cursor", `{"nextPageCursor":12345,"count":1,"results":[]}`, "12345", true},
+		{"string ULID cursor", `{"nextPageCursor":"01krvgmtvwtpanc2yra581qwsh","count":1,"results":[]}`, "01krvgmtvwtpanc2yra581qwsh", true},
+		{"null cursor", `{"nextPageCursor":null,"count":1,"results":[]}`, "", false},
+		{"missing cursor", `{"count":1,"results":[]}`, "", false},
+		{"empty string cursor", `{"nextPageCursor":"","count":1,"results":[]}`, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var resp CursorResponse[struct{}]
+			if err := json.Unmarshal([]byte(tt.input), &resp); err != nil {
+				t.Fatalf("unmarshal error: %v", err)
+			}
+			if resp.NextPageCursor.Value != tt.wantVal {
+				t.Errorf("Value = %q, want %q", resp.NextPageCursor.Value, tt.wantVal)
+			}
+			if resp.NextPageCursor.Set != tt.wantSet {
+				t.Errorf("Set = %v, want %v", resp.NextPageCursor.Set, tt.wantSet)
 			}
 		})
 	}

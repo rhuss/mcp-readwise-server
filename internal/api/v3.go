@@ -58,10 +58,10 @@ func (c *Client) ListDocuments(ctx context.Context, apiKey string, location, cat
 			allResults = allResults[:limit]
 			break
 		}
-		if page.NextPageCursor == nil || page.NextPageCursor.String() == "" {
+		if !page.NextPageCursor.Set {
 			break
 		}
-		cursor = page.NextPageCursor.String()
+		cursor = page.NextPageCursor.Value
 	}
 
 	return &types.CursorResponse[types.Document]{
